@@ -5,18 +5,24 @@
 
 (def parser
   (insta/parser
-   "<atom>   = string | number | bool | char | nil
-    <number> = long | bigint | double | decimal
-    string   = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
-    nil      = 'nil'
-    bool     = 'true' | 'false'
-    char     = <'\\\\'> #'[a-z0-9]+'
-    long     = int
-    bigint   = int <'N'>
-    double   = float
-    decimal  = float <'M'>
-    <float>  = #'[+-]?[0-9]+(\\.[0-9+])?([eE][+-]?[0-9]+)?'
-    <int>    = #'[+-]?[0-9]+'"))
+   "<atom>    = string | number | bool | char | nil | symlike
+    <symlike> = symbol | qsymbol | keyword | qkeyword
+    <number>  = long | bigint | double | decimal
+    string    = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
+    symbol    = sym
+    qsymbol   = sym <'/'> sym
+    keyword   = <':'> sym
+    qkeyword  = <':'> sym <'/'> sym
+    <sym>     = #'[\\.+-]?[\\p{L}*!_?$%&=<>][\\p{L}\\d*!_?$%&=<>:#\\.+-]*'
+    nil       = 'nil'
+    bool      = 'true' | 'false'
+    char      = <'\\\\'> #'[a-z0-9]+'
+    long      = int
+    bigint    = int <'N'>
+    double    = float
+    decimal   = float <'M'>
+    <float>   = #'[+-]?\\d+(\\.\\d+])?([eE][+-]?\\d+)?'
+    <int>     = #'[+-]?\\d+'"))
 
 (def special-chars
   {"newline"   \newline
@@ -35,14 +41,18 @@
         (char (Integer/parseInt (subs c 1) 16)))))
 
 (def transforms
-  {:long    #(Long/parseLong %)
-   :double  #(Double/parseDouble %)
-   :bigint  #(BigInteger. %)
-   :decimal #(BigDecimal. %)
-   :bool    #(= % "true")
-   :nil     (constantly nil)
-   :char    transform-char
-   :string  identity})
+  {:long     #(Long/parseLong %)
+   :double   #(Double/parseDouble %)
+   :bigint   #(BigInteger. %)
+   :decimal  #(BigDecimal. %)
+   :bool     #(= % "true")
+   :nil      (constantly nil)
+   :char     transform-char
+   :string   identity
+   :symbol   symbol
+   :qsymbol  symbol
+   :keyword  keyword
+   :qkeyword keyword})
 
 (defn read-string
   ([s]
