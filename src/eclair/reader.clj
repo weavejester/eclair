@@ -5,7 +5,9 @@
 
 (def parser
   (insta/parser
-   "<number> = long | bigint | double | decimal | bool | nil | char
+   "<atom>   = string | number | bool | char | nil
+    <number> = long | bigint | double | decimal
+    string   = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
     nil      = 'nil'
     bool     = 'true' | 'false'
     char     = <'\\\\'> #'[a-z0-9]+'
@@ -39,7 +41,8 @@
    :decimal #(BigDecimal. %)
    :bool    #(= % "true")
    :nil     (constantly nil)
-   :char    transform-char})
+   :char    transform-char
+   :string  identity})
 
 (defn read-string
   ([s]
