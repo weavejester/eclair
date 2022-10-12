@@ -7,13 +7,14 @@
 (def parser
   (insta/parser
    "expr      = list | vector | map | set | atom | tagged
-    tagged    = <'#'> sym <ignored> expr
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
     set       = <'#{'> seq <'}'>
-    <seq>     = <ignored>? (expr (<ignored> expr)*) <ignored>?
-    ignored   = (comment | space)*
+    <seq>     = <skip>? (expr (<skip> expr)*) <skip>?
+    tagged    = !'#_' <'#'> sym <skip>? expr
+    discard   = #'#_' <skip>? expr
+    skip      = (comment | space | discard)+
     comment   = #';.*?(\n|$)'
     space     = #'[\\s,]+'
     <atom>    = string | number | bool | char | nil | symlike
