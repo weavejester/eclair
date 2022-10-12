@@ -10,7 +10,9 @@
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
     set       = <'#{'> seq <'}'>
-    <seq>     = <space>? (expr (<space> expr)*) <space>?
+    <seq>     = <ignored>? (expr (<ignored> expr)*) <ignored>?
+    ignored   = (comment | space)*
+    comment   = #';.*?(\n|$)'
     space     = #'[\\s,]+'
     <atom>    = string | number | bool | char | nil | symlike
     <symlike> = symbol | qsymbol | keyword | qkeyword
