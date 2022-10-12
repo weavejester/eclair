@@ -5,7 +5,14 @@
 
 (def parser
   (insta/parser
-   "<atom>    = string | number | bool | char | nil | symlike
+   "<expr>    = list | vector | map | set | atom
+    list      = <'('> seq <')'>
+    vector    = <'['> seq <']'>
+    map       = <'{'> seq <'}'>
+    set       = <'#{'> seq <'}'>
+    <seq>     = <space>? (expr (<space> expr)*) <space>?
+    space     = #'[\\s,]+'
+    <atom>    = string | number | bool | char | nil | symlike
     <symlike> = symbol | qsymbol | keyword | qkeyword
     <number>  = long | bigint | double | decimal
     string    = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
@@ -21,7 +28,7 @@
     bigint    = int <'N'>
     double    = float
     decimal   = float <'M'>
-    <float>   = #'[+-]?\\d+(\\.\\d+])?([eE][+-]?\\d+)?'
+    <float>   = #'[+-]?\\d+\\.\\d+]?([eE][+-]?\\d+)?'
     <int>     = #'[+-]?\\d+'"))
 
 (def special-chars
@@ -52,7 +59,11 @@
    :symbol   symbol
    :qsymbol  symbol
    :keyword  keyword
-   :qkeyword keyword})
+   :qkeyword keyword
+   :list     list
+   :vector   vector
+   :map      array-map
+   :set      #(set %&)})
 
 (defn read-string
   ([s]
