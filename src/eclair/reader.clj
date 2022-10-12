@@ -1,11 +1,13 @@
 (ns eclair.reader
   (:refer-clojure :exclude [read-string])
-  (:require [clojure.string :as str]
+  (:require [clojure.instant :as instant]
+            [clojure.string :as str]
             [instaparse.core :as insta]))
 
 (def parser
   (insta/parser
-   "<expr>    = list | vector | map | set | atom
+   "expr      = list | vector | map | set | atom | tagged
+    tagged    = <'#'> sym <ignored> expr
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
@@ -33,7 +35,7 @@
     <float>   = #'[+-]?\\d+\\.\\d+]?([eE][+-]?\\d+)?'
     <int>     = #'[+-]?\\d+'"))
 
-(def special-chars
+(def ^:private special-chars
   {"newline"   \newline
    "space"     \space
    "tab"       \tab
@@ -49,8 +51,9 @@
         (str/starts-with? c "u")
         (char (Integer/parseInt (subs c 1) 16)))))
 
-(def transforms
-  {:long     #(Long/parseLong %)
+(def ^:private core-transforms
+  {:expr     identity
+   :long     #(Long/parseLong %)
    :double   #(Double/parseDouble %)
    :bigint   #(BigInteger. %)
    :decimal  #(BigDecimal. %)
@@ -67,8 +70,22 @@
    :map      array-map
    :set      #(set %&)})
 
+(def ^:private core-readers
+  {'inst instant/read-instant-date
+   'uuid #(java.util.UUID/fromString %)})
+
+(defn- make-tagged-transform [readers]
+  (let [readers (merge core-readers readers)]
+    (fn [tag data]
+      (if-let [reader (readers (symbol tag))]
+        (reader data)
+        (throw (ex-info (str "Cannot find reader for: #" tag) {:tag tag}))))))
+
+(defn- make-transforms [readers]
+  (assoc core-transforms :tagged (make-tagged-transform readers)))
+
 (defn read-string
   ([s]
    (read-string s {}))
-  ([s opts]
-   (insta/transform transforms (parser s))))
+  ([s {:keys [readers]}]
+   (insta/transform (make-transforms readers) (parser s))))
