@@ -6,7 +6,8 @@
 
 (def parser
   (insta/parser
-   "expr      = list | vector | map | set | atom | tagged
+   "expr      = list | vector | map | set | atom | tagged | var
+    var       = <'~'> (symbol | vector | map)
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
@@ -104,11 +105,22 @@
         (reader data)
         (throw (ex-info (str "Cannot find reader for: #" tag) {:tag tag}))))))
 
-(defn- make-transforms [readers]
-  (assoc core-transforms :tagged (make-tagged-transform readers)))
+(defn- make-var-transform [vars]
+  (fn lookup [x]
+    (cond
+      (vector? x) (some lookup x)
+      (map? x)    (x (first (filter lookup (keys x))))
+      (symbol? x) (vars x)
+      :else       x)))
+
+(defn- make-transforms [readers vars]
+  (assoc core-transforms
+         :tagged (make-tagged-transform readers)
+         :var    (make-var-transform vars)))
 
 (defn read-string
   ([s]
    (read-string s {}))
-  ([s {:keys [readers]}]
-   (insta/transform (make-transforms readers) (parser s))))
+  ([s {:keys [readers vars]}]
+   (insta/transform (make-transforms readers vars)
+                    (parser s))))
