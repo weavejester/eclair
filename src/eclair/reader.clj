@@ -20,7 +20,9 @@
     <atom>    = string | number | bool | char | nil | symlike
     <symlike> = symbol | qsymbol | keyword | qkeyword
     <number>  = long | bigint | double | decimal
-    string    = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
+    string    = str | bigstr
+    <str>     = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
+    <bigstr>  = <'\"\"\"'> #'.*?[^\\\\](?=\"\"\")' <'\"\"\"'>
     symbol    = sym
     qsymbol   = sym <'/'> sym
     keyword   = <':'> sym
