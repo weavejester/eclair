@@ -44,13 +44,33 @@
    "formfeed"  \formfeed
    "return"    \return})
 
+(defn- parse-codepoint [c]
+  (char (Integer/parseInt (subs c 1) 16)))
+
 (defn- transform-char [c]
   (or (special-chars c)
       (cond
         (= (count c) 1)
         (char (.charAt c 0))
         (str/starts-with? c "u")
-        (char (Integer/parseInt (subs c 1) 16)))))
+        (parse-codepoint c))))
+
+(def ^:private escape-chars
+  {"t" "\t"
+   "r" "\r"
+   "n" "\n"
+   "\\" "\\"
+   "\"" "\""})
+
+(defn- parse-escaped-char [c]
+  (or (escape-chars (subs c 1))
+      (throw (ex-info (str "Unsupported escape character: " c)
+                      {:escape-char c}))))
+
+(defn- transform-string [s]
+  (-> s
+      (str/replace #"\\[trn\\\"]" parse-escaped-char)
+      (str/replace #"\\u\d{4}" parse-codepoint)))
 
 (def ^:private core-transforms
   {:expr     identity
@@ -61,7 +81,7 @@
    :bool     #(= % "true")
    :nil      (constantly nil)
    :char     transform-char
-   :string   identity
+   :string   transform-string
    :symbol   symbol
    :qsymbol  symbol
    :keyword  keyword
