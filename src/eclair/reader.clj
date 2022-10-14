@@ -7,7 +7,10 @@
 (def parser
   (insta/parser
    "expr      = list | vector | map | set | atom | tagged | var
-    var       = <'~'> (symbol | vector | map)
+    <var>     = varsimple | varopt | varchoice
+    varsimple = <'~'> symbol
+    varopt    = <'~'> vector
+    varchoice = <'~{'> seq <'}'>
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
@@ -105,18 +108,22 @@
         (reader data)
         (throw (ex-info (str "Cannot find reader for: #" tag) {:tag tag}))))))
 
-(defn- make-var-transform [vars]
-  (fn lookup [x]
-    (cond
-      (vector? x) (some lookup x)
-      (map? x)    (x (first (filter lookup (keys x))))
-      (symbol? x) (vars x)
-      :else       x)))
+(defn- make-choice-transform [vars]
+  (fn [& choices]
+    (when (odd? (count choices))
+      (throw (IllegalArgumentException.
+              (str "No value supplied for key: " (last choices)))))
+    (->> (partition 2 choices)
+         (filter (comp vars first))
+         (first)
+         (second))))
 
 (defn- make-transforms [readers vars]
   (assoc core-transforms
-         :tagged (make-tagged-transform readers)
-         :var    (make-var-transform vars)))
+         :tagged    (make-tagged-transform readers)
+         :varsimple vars
+         :varopt    #(some vars %)
+         :varchoice (make-choice-transform vars)))
 
 (defn read-string
   ([s]
