@@ -73,11 +73,6 @@
       (throw (ex-info (str "Unsupported escape character: " c)
                       {:escape-char c}))))
 
-(defn- transform-string [s]
-  (-> s
-      (str/replace #"\\[trn\\\"]" parse-escaped-char)
-      (str/replace #"\\u\d{4}" parse-codepoint)))
-
 (def ^:private core-transforms
   {:expr     identity
    :long     #(Long/parseLong %)
@@ -87,7 +82,6 @@
    :bool     #(= % "true")
    :nil      (constantly nil)
    :char     transform-char
-   :string   transform-string
    :symbol   symbol
    :qsymbol  symbol
    :keyword  keyword
@@ -108,6 +102,12 @@
         (reader data)
         (throw (ex-info (str "Cannot find reader for: #" tag) {:tag tag}))))))
 
+(defn- make-string-transform [vars]
+  #(-> %
+       (str/replace #"\\[trn\\\"]" parse-escaped-char)
+       (str/replace #"\\u\d{4}" parse-codepoint)
+       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (vars (symbol s))))))
+
 (defn- make-choice-transform [vars]
   (fn [& choices]
     (when (odd? (count choices))
@@ -121,6 +121,7 @@
 (defn- make-transforms [readers vars]
   (assoc core-transforms
          :tagged    (make-tagged-transform readers)
+         :string    (make-string-transform vars)
          :varsimple vars
          :varopt    #(some vars %)
          :varchoice (make-choice-transform vars)))
