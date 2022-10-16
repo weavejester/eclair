@@ -95,18 +95,26 @@
   {'inst instant/read-instant-date
    'uuid #(java.util.UUID/fromString %)})
 
+(defn- get-var [vars name]
+  (if-let [[_ v] (find vars (symbol name))]
+    v
+    (throw (ex-info (str "No such var: " name) {:var name}))))
+
+(defn- get-var-or-literal [vars x]
+  (if (symbol? x) (vars x) x))
+
 (defn- make-tagged-transform [readers]
   (let [readers (merge core-readers readers)]
     (fn [tag data]
       (if-let [reader (readers (symbol tag))]
         (reader data)
-        (throw (ex-info (str "Cannot find reader for: #" tag) {:tag tag}))))))
+        (throw (ex-info (str "No such reader for: #" tag) {:tag tag}))))))
 
 (defn- make-string-transform [vars]
   #(-> %
        (str/replace #"\\[trn\\\"]" parse-escaped-char)
        (str/replace #"\\u\d{4}" parse-codepoint)
-       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (vars (symbol s))))))
+       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (get-var vars s)))))
 
 (defn- make-choice-transform [vars]
   (fn [& choices]
@@ -114,7 +122,7 @@
       (throw (IllegalArgumentException.
               (str "No value supplied for key: " (last choices)))))
     (->> (partition 2 choices)
-         (filter (comp vars first))
+         (filter (fn [[k _]] (get-var vars k)))
          (first)
          (second))))
 
@@ -122,8 +130,8 @@
   (assoc core-transforms
          :tagged    (make-tagged-transform readers)
          :string    (make-string-transform vars)
-         :varsimple vars
-         :varopt    #(some vars %)
+         :varsimple #(get-var vars %)
+         :varopt    #(some (partial get-var-or-literal vars) %)
          :varchoice (make-choice-transform vars)))
 
 (defn read-string
