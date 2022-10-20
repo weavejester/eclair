@@ -6,8 +6,9 @@
 
 (def parser
   (insta/parser
-   "expr      = list | vector | map | set | atom | symbol | tagged | unquote
+   "expr      = list | vector | map | set | atom | symbol | tagged | unquote | splice
     <unquote> = <'~'> (var | resolve)
+    splice    = <'~@'> (var | resolve)
     var       = symbol
     resolve   = <'('> <skip>? symbol (<skip> varexpr)* <skip>? <')'>
     <varexpr> = var | resolve | vector | map | set | atom | tagged
@@ -70,6 +71,20 @@
       (throw (ex-info (str "Unsupported escape character: " c)
                       {:escape-char c}))))
 
+(defprotocol ExpandSplices
+  (expand-element [x]))
+
+(defrecord UnquoteSplice [value]
+  ExpandSplices
+  (expand-element [_] value))
+
+(extend-type Object
+  ExpandSplices
+  (expand-element [x] [x]))
+
+(defn- expand-splices [& coll]
+  (mapcat expand-element coll))
+
 (def ^:private core-transforms
   {:expr     identity
    :long     #(Long/parseLong %)
@@ -83,10 +98,11 @@
    :qsymbol  symbol
    :keyword  keyword
    :qkeyword keyword
-   :list     list
-   :vector   vector
-   :map      array-map
-   :set      #(set %&)})
+   :list     (comp doall expand-splices)
+   :vector   (comp vec expand-splices)
+   :map      (comp #(apply array-map %) expand-splices)
+   :set      (comp set expand-splices)
+   :splice   ->UnquoteSplice})
 
 (def ^:private core-readers
   {'inst instant/read-instant-date
