@@ -92,6 +92,10 @@
   {'inst instant/read-instant-date
    'uuid #(java.util.UUID/fromString %)})
 
+(def ^:private core-resolvers
+  {'or #(some identity %&)
+   '?  #(->> (partition 2 %&) (filter first) first second)})
+
 (defn- make-tagged-transform [readers]
   (let [readers (merge core-readers readers)]
     (fn [tag data]
@@ -106,22 +110,22 @@
        (str/replace #"~\{(.*?)\}" (fn [[_ s]] (get-var vars s)))))
 
 (defn- make-resolver-transform [resolvers]
-  (fn [name & args]
-    (prn args)
-    (if-let [resolver (resolvers (symbol name))]
-      (apply resolver args)
-      (throw (ex-info (str "No such resolver: " name) {:resolver name})))))
+  (let [resolvers (merge core-resolvers resolvers)]
+    (fn [name & args]
+      (if-let [resolver (resolvers (symbol name))]
+        (apply resolver args)
+        (throw (ex-info (str "No such resolver: " name) {:resolver name}))))))
 
 (defn- make-transforms [readers resolvers vars]
   (assoc core-transforms
          :tagged  (make-tagged-transform readers)
          :string  (make-string-transform vars)
-         :var     #(do (prn %) (get vars %))
+         :var     #(get vars %)
          :resolve (make-resolver-transform resolvers)))
 
 (defn read-string
   ([s]
    (read-string s {}))
   ([s {:keys [readers resolvers vars]}]
-   (insta/transform (make-transforms readers resolvers vars)
+   (insta/transform (make-transforms readers resolvers (or vars {}))
                     (parser s))))
