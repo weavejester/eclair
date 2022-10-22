@@ -7,8 +7,9 @@
 (def parser
   (insta/parser
    "expr      = list | vector | map | set | atom | symbol | tagged | unquote | splice
-    <unquote> = <'~'> (var | resolve)
-    splice    = <'~@'> (var | resolve)
+    <unquote> = <'~'> extern
+    splice    = <'~@'> extern
+    extern    = var | resolve
     var       = symbol
     resolve   = <'('> <skip>? symbol (<skip> varexpr)* <skip>? <')'>
     <varexpr> = var | resolve | vector | map | set | atom | tagged
@@ -87,6 +88,7 @@
 
 (def ^:private core-transforms
   {:expr     identity
+   :extern   identity
    :long     #(Long/parseLong %)
    :double   #(Double/parseDouble %)
    :bigint   #(BigInteger. %)
@@ -119,11 +121,14 @@
         (reader data)
         (throw (ex-info (str "No such reader for: #" tag) {:tag tag}))))))
 
-(defn- make-string-transform [vars]
+(defn- parse-unquote [transforms s]
+  (str (insta/transform @transforms (parser s :start :extern))))
+
+(defn- make-string-transform [transforms]
   #(-> %
        (str/replace #"\\[trn\\\"]" parse-escaped-char)
        (str/replace #"\\u\d{4}" parse-codepoint)
-       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (get vars s)))))
+       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (parse-unquote transforms s)))))
 
 (defn- make-resolver-transform [resolvers]
   (let [resolvers (merge core-resolvers resolvers)]
@@ -132,16 +137,17 @@
         (apply resolver args)
         (throw (ex-info (str "No such resolver: " name) {:resolver name}))))))
 
-(defn- make-transforms [readers resolvers vars]
+(defn- make-transforms [transforms {:keys [readers resolvers vars]}]
   (assoc core-transforms
          :tagged  (make-tagged-transform readers)
-         :string  (make-string-transform vars)
+         :string  (make-string-transform transforms)
          :var     #(get vars %)
          :resolve (make-resolver-transform resolvers)))
 
 (defn read-string
   ([s]
    (read-string s {}))
-  ([s {:keys [readers resolvers vars]}]
-   (insta/transform (make-transforms readers resolvers (or vars {}))
-                    (parser s))))
+  ([s options]
+   (let [transforms (promise)]
+     (deliver transforms (make-transforms transforms options))
+     (insta/transform @transforms (parser s)))))
