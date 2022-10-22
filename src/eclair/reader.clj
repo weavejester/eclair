@@ -123,7 +123,7 @@
   #(-> %
        (str/replace #"\\[trn\\\"]" parse-escaped-char)
        (str/replace #"\\u\d{4}" parse-codepoint)
-       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (get-var vars s)))))
+       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (get vars s)))))
 
 (defn- make-resolver-transform [resolvers]
   (let [resolvers (merge core-resolvers resolvers)]
