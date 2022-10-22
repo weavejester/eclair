@@ -107,8 +107,14 @@
    :splice   ->UnquoteSplice})
 
 (def ^:private core-readers
-  {'inst instant/read-instant-date
-   'uuid #(java.util.UUID/fromString %)})
+  {'inst    instant/read-instant-date
+   'uuid    #(java.util.UUID/fromString %)
+   'str     str
+   'int     #(if (number? %) (long %)   (Long/parseLong (str %)))
+   'float   #(if (number? %) (double %) (Double/parseDouble (str %)))
+   'bool    #(if (boolean? %) % (Boolean/parseBoolean (str %)))
+   'keyword #(if (keyword? %) % (keyword (str %)))
+   'symbol  #(symbol (if (instance? clojure.lang.Named %) (name %) (str %)))})
 
 (def ^:private core-resolvers
   {'or #(some identity %&)
