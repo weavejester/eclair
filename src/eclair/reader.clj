@@ -23,9 +23,10 @@
     skip      = (comment | space | discard)+
     comment   = #';.*?(\n|$)'
     space     = #'[\\s,]+'
-    <atom>    = string | number | bool | char | nil | keyword
+    <atom>    = string | rawstring | number | bool | char | nil | keyword
     <number>  = long | bigint | double | decimal
     string    = str | bigstr
+    rawstring = <'#'> (str | bigstr)
     <str>     = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
     <bigstr>  = <'\"\"\"'> #'.*?[^\\\\](?=\"\"\")' <'\"\"\"'>
     symbol    = sym | sym <'/'> sym
@@ -60,17 +61,10 @@
         (str/starts-with? c "u")
         (parse-codepoint c))))
 
-(def ^:private escape-chars
-  {"t" "\t"
-   "r" "\r"
-   "n" "\n"
-   "\\" "\\"
-   "\"" "\""})
-
-(defn- parse-escaped-char [c]
-  (or (escape-chars (subs c 1))
-      (throw (ex-info (str "Unsupported escape character: " c)
-                      {:escape-char c}))))
+(defn- transform-raw-string [s]
+  (-> s
+      (str/replace #"\\\"" "\"")
+      (str/replace #"\\\\" "\\")))
 
 (defprotocol ExpandSplices
   (expand-element [x]))
@@ -87,24 +81,25 @@
   (mapcat expand-element coll))
 
 (def ^:private core-transforms
-  {:expr     identity
-   :extern   identity
-   :long     #(Long/parseLong %)
-   :double   #(Double/parseDouble %)
-   :bigint   #(BigInteger. %)
-   :decimal  #(BigDecimal. %)
-   :bool     #(= % "true")
-   :nil      (constantly nil)
-   :char     transform-char
-   :symbol   symbol
-   :qsymbol  symbol
-   :keyword  keyword
-   :qkeyword keyword
-   :list     (comp doall expand-splices)
-   :vector   (comp vec expand-splices)
-   :map      (comp #(apply array-map %) expand-splices)
-   :set      (comp set expand-splices)
-   :splice   ->UnquoteSplice})
+  {:expr      identity
+   :extern    identity
+   :long      #(Long/parseLong %)
+   :double    #(Double/parseDouble %)
+   :bigint    #(BigInteger. %)
+   :decimal   #(BigDecimal. %)
+   :bool      #(= % "true")
+   :nil       (constantly nil)
+   :char      transform-char
+   :symbol    symbol
+   :qsymbol   symbol
+   :keyword   keyword
+   :qkeyword  keyword
+   :rawstring transform-raw-string
+   :list      (comp doall expand-splices)
+   :vector    (comp vec expand-splices)
+   :map       (comp #(apply array-map %) expand-splices)
+   :set       (comp set expand-splices)
+   :splice    ->UnquoteSplice})
 
 (def ^:private core-readers
   {'inst    instant/read-instant-date
@@ -114,7 +109,8 @@
    'float   #(if (number? %) (double %) (Double/parseDouble (str %)))
    'bool    #(if (boolean? %) % (Boolean/parseBoolean (str %)))
    'keyword #(if (keyword? %) % (keyword (str %)))
-   'symbol  #(symbol (if (instance? clojure.lang.Named %) (name %) (str %)))})
+   'symbol  #(symbol (if (instance? clojure.lang.Named %) (name %) (str %)))
+   'regex   re-pattern})
 
 (def ^:private core-resolvers
   {'or #(some identity %&)
@@ -126,6 +122,18 @@
       (if-let [reader (readers (symbol tag))]
         (reader data)
         (throw (ex-info (str "No such reader for: #" tag) {:tag tag}))))))
+
+(def ^:private escape-chars
+  {"t" "\t"
+   "r" "\r"
+   "n" "\n"
+   "\\" "\\"
+   "\"" "\""})
+
+(defn- parse-escaped-char [c]
+  (or (escape-chars (subs c 1))
+      (throw (ex-info (str "Unsupported escape character: " c)
+                      {:escape-char c}))))
 
 (defn- parse-unquote [transforms s]
   (str (insta/transform @transforms (parser s :start :extern))))
