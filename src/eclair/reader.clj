@@ -111,7 +111,7 @@
    'bool    #(if (boolean? %) % (Boolean/parseBoolean (str %)))
    'keyword #(if (keyword? %) % (keyword (str %)))
    'symbol  #(symbol (if (instance? clojure.lang.Named %) (name %) (str %)))
-   'regex   re-pattern})
+   're      re-pattern})
 
 (defprotocol Reference
   (resolve-ref [ref config]))
