@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [read-string])
   (:require [clojure.instant :as instant]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [instaparse.core :as insta]))
 
 (def parser
@@ -112,9 +113,34 @@
    'symbol  #(symbol (if (instance? clojure.lang.Named %) (name %) (str %)))
    'regex   re-pattern})
 
+(defprotocol Reference
+  (resolve-ref [ref config]))
+
+(defrecord LocalRef [index]
+  Reference
+  (resolve-ref [_ config]
+    (get-in config index)))
+
 (def ^:private core-resolvers
-  {'or #(some identity %&)
-   '?  #(->> (partition 2 %&) (filter first) first second)})
+  {'or  #(some identity %&)
+   '?   #(->> (partition 2 %&) (filter first) first second)
+   'ref #(->LocalRef %&)})
+
+(defn- reference? [x]
+  (satisfies? Reference x))
+
+(defn- recursively-resolve-ref [ref config]
+  (loop [val (resolve-ref ref config), previous #{}]
+    (if-not (reference? val)
+      val
+      (if-not (contains? previous val)
+        (recur (resolve-ref val config) (conj previous val))
+        (throw (ex-info (str "Circular reference detected: " (:index val))
+                        {:ref val}))))))
+
+(defn- resolve-refs [config]
+  (walk/postwalk #(if (reference? %) (recursively-resolve-ref % config) %)
+                 config))
 
 (defn- make-tagged-transform [readers]
   (let [readers (merge core-readers readers)]
@@ -164,4 +190,5 @@
   ([s options]
    (let [transforms (promise)]
      (deliver transforms (make-transforms transforms options))
-     (insta/transform @transforms (parser s)))))
+     (-> (insta/transform @transforms (parser s))
+         (resolve-refs)))))
