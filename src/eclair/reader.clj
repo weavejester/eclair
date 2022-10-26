@@ -7,7 +7,9 @@
 
 (def parser
   (insta/parser
-   "expr      = list | vector | map | set | atom | symbol | tagged | unquote | splice
+   "root      = <skip?> (expr | baremap) <skip?>
+    baremap   = expr (<skip> expr)+
+    <expr>    = list | vector | map | set | atom | symbol | tagged | unquote | splice
     <unquote> = <'~'> extern
     splice    = <'~@'> extern
     extern    = var | resolve
@@ -82,7 +84,7 @@
   (mapcat expand-element coll))
 
 (def ^:private core-transforms
-  {:expr      identity
+  {:root      identity
    :extern    identity
    :long      #(Long/parseLong %)
    :double    #(Double/parseDouble %)
@@ -99,6 +101,7 @@
    :list      (comp doall expand-splices)
    :vector    (comp vec expand-splices)
    :map       (comp #(apply array-map %) expand-splices)
+   :baremap   (comp #(apply array-map %) expand-splices)
    :set       (comp set expand-splices)
    :splice    ->UnquoteSplice})
 
