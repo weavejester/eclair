@@ -76,9 +76,11 @@
   ExpandSplices
   (expand-element [_] value))
 
-(extend-type Object
-  ExpandSplices
-  (expand-element [x] [x]))
+(extend-protocol ExpandSplices
+  Object
+  (expand-element [x] (list x))
+  nil
+  (expand-element [_] (list nil)))
 
 (defn- expand-splices [& coll]
   (mapcat expand-element coll))
