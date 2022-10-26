@@ -17,9 +17,8 @@
 (deftest test-load-ecl-file
   (let [port 8080
         host "localhost"
-        dev  true
         url  (format "http://%s:%s/example" host port)]
-    (is = {:example/server {:port port, :url url}
+    (is = {:example/server {:port port, :url url, :x 1, :y 2}
            :example/stream {:filter #"\d+", :url url}
            :example/text
            {:environment "development"
@@ -30,4 +29,6 @@ With \"Inner quotations\"
 And maybe a variable like %s.
 " port)}})
     (read-string (slurp (io/resource "eclair/config.ecl"))
-                 {:vars {'port port, 'host host, 'dev true}})))
+                 {:vars {'port port, 'host host, 'dev true
+                         'server-options {:x 1 :y 2}}})))
+
