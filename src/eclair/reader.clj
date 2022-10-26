@@ -28,8 +28,8 @@
     <number>  = long | bigint | double | decimal
     string    = str | bigstr
     rawstring = <'#'> (str | bigstr)
-    <str>     = <'\"'> #'([^\"]|\\\\.)*' <'\"'>
-    <bigstr>  = <'\"\"\"'> #'.*?[^\\\\](?=\"\"\")' <'\"\"\"'>
+    <str>     = <'\"'> #'(?s)([^\"]|\\\\.)*' <'\"'>
+    <bigstr>  = <'\"\"\"'> #'(?s).*?[^\\\\](?=\"\"\")' <'\"\"\"'>
     symbol    = sym | sym <'/'> sym
     keyword   = <':'> (sym | sym <'/'> sym)
     <sym>     = #'[\\.+-]?[\\p{L}*!_?$%&=<>][\\p{L}\\d*!_?$%&=<>:#\\.+-]*'
