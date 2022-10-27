@@ -189,11 +189,14 @@
          :var     #(get vars %)
          :resolve (make-resolver-transform resolvers)))
 
+(declare ^:dynamic *reader-options*)
+
 (defn read-string
   ([s]
    (read-string s {}))
   ([s options]
    (let [transforms (promise)]
      (deliver transforms (make-transforms transforms options))
-     (-> (insta/transform @transforms (parser s))
-         (resolve-refs)))))
+     (binding [*reader-options* options]
+       (-> (insta/transform @transforms (parser s))
+           (resolve-refs))))))

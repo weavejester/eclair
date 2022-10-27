@@ -12,7 +12,7 @@
 (declare load)
 
 (defn include [path]
-  (load path))
+  (load path eclair/*reader-options*))
 
 (defn load
   ([path]
@@ -20,7 +20,7 @@
   ([path options]
    (eclair/read-string
     (slurp (io/resource path))
-    (merge {:resolvers {'include include}} options))))
+    (update options :resolvers (partial merge {'include include})))))
 
 (def resolvers
   {'env env, 'include include})
