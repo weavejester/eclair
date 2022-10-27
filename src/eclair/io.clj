@@ -3,12 +3,6 @@
   (:require [clojure.java.io :as io]
             [eclair.reader :as eclair]))
 
-(defn env
-  ([key]
-   (env key nil))
-  ([key default]
-   (or (System/getenv key) default)))
-
 (declare load)
 
 (defn include [path]
@@ -22,5 +16,11 @@
     (slurp (io/resource path))
     (update options :resolvers (partial merge {'include include})))))
 
-(def resolvers
-  {'env env, 'include include})
+(defn env
+  ([key]
+   (env key nil))
+  ([key default]
+   (or (System/getenv key) default)))
+
+(def env-resolvers
+  {'env env})
