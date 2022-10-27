@@ -74,7 +74,6 @@
 
 (defrecord UnquoteSplice [value]
   ExpandSplices
-  (expand-element [_] value))
   (expand-element [_]
     (if (map? value)
       (mapcat identity value)

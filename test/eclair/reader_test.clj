@@ -39,7 +39,9 @@ Some long description
 Multiple lines
 With \"Inner quotations\"
 And maybe a variable like %s.
-" port)}})
+" port)}
+           :example/extra
+           {:text "Something extra"}})
     (io/load "eclair/config.ecl"
              {:vars {'port port, 'host host, 'dev true
                      'server-options {:x 1 :y 2}}})))

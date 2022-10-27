@@ -16,3 +16,5 @@ Multiple lines
 With "Inner quotations"
 And maybe a variable like ~{port}.
 """}
+
+~@(include "extra.ecl")
