@@ -22,7 +22,7 @@
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
     set       = <'#{'> seq <'}'>
-    <seq>     = <skip>? expr (<skip> expr)* <skip>?
+    <seq>     = <skip>? (expr (<skip> expr)* <skip>?)?
     tagged    = !'#_' <'#'> sym <skip>? expr
     discard   = #'#_' <skip>? expr
     skip      = (comment | space | discard)+
