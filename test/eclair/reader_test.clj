@@ -12,7 +12,19 @@
   (is (= [:x] (read-string "[:x]")))
   (is (= '(:x) (read-string "(:x)")))
   (is (= #{:x} (read-string "#{:x}")))
-  (is (= {:x 1} (read-string "{:x 1}"))))
+  (is (= {:x 1} (read-string "{:x 1}")))
+  (is (= :x (read-string ":x ; comment")))
+  (is (= {:x 1} (read-string "{:x #_2 1}"))))
+
+(deftest test-ecl-syntax
+  (is (= 1 (read-string "~x" {:vars {'x 1}})))
+  (is (= {:x 1} (read-string "{~@x}" {:vars {'x [:x 1]}})))
+  (is (= "1/2" (read-string "\"~{x}/~{y}\"" {:vars {'x 1, 'y 2}})))
+  (is (= 1 (read-string "~(or x 1)")))
+  (is (= 2 (read-string "~(or x 1)" {:vars {'x 2}})))
+  (is (= {:x 1} (read-string ":x 1")))
+  (is (= "x" (read-string "\"\"\"x\"\"\"")))
+  (is (= "\\d" (read-string "#\"\\d\""))))
 
 (deftest test-load-ecl-file
   (let [port 8080
@@ -31,4 +43,3 @@ And maybe a variable like %s.
     (read-string (slurp (io/resource "eclair/config.ecl"))
                  {:vars {'port port, 'host host, 'dev true
                          'server-options {:x 1 :y 2}}})))
-
