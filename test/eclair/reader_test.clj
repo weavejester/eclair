@@ -1,7 +1,7 @@
 (ns eclair.reader-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
-            [eclair.reader :refer :all]))
+            [eclair.reader :refer :all]
+            [eclair.io :as io]))
 
 (deftest test-edn-syntax
   (is (= 1 (read-string "1")))
@@ -40,6 +40,6 @@ Multiple lines
 With \"Inner quotations\"
 And maybe a variable like %s.
 " port)}})
-    (read-string (slurp (io/resource "eclair/config.ecl"))
-                 {:vars {'port port, 'host host, 'dev true
-                         'server-options {:x 1 :y 2}}})))
+    (io/load "eclair/config.ecl"
+             {:vars {'port port, 'host host, 'dev true
+                     'server-options {:x 1 :y 2}}})))
