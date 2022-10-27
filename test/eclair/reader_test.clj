@@ -24,7 +24,8 @@
   (is (= 2 (read-string "~(or x 1)" {:vars {'x 2}})))
   (is (= {:x 1} (read-string ":x 1")))
   (is (= "x" (read-string "\"\"\"x\"\"\"")))
-  (is (= "\\d" (read-string "#\"\\d\""))))
+  (is (= "\\d" (read-string "#\"\\d\"")))
+  (is (= {:foo/x 1} (read-string "#:foo {:x 1}"))))
 
 (deftest test-load-ecl-file
   (let [port 8080

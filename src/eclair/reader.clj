@@ -7,15 +7,17 @@
 
 (def parser
   (insta/parser
-   "root      = <skip?> (expr | baremap) <skip?>
+   "root      = <skip>? (expr | baremap) <skip>?
     baremap   = expr (<skip> expr)+
-    <expr>    = list | vector | map | set | atom | symbol | tagged | unquote | splice
+    <expr>    = list | vector | map | set | atom | symbol | tagged | unquote |
+                splice | nsmap
     <unquote> = <'~'> extern
     splice    = <'~@'> extern
     extern    = var | resolve
     var       = symbol
     resolve   = <'('> <skip>? symbol (<skip> varexpr)* <skip>? <')'>
-    <varexpr> = var | resolve | vector | map | set | atom | tagged
+    <varexpr> = var | resolve | vector | map | set | atom | tagged | nsmap
+    nsmap     = <'#'> keyword <skip>? map
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
     map       = <'{'> seq <'}'>
@@ -88,6 +90,14 @@
 (defn- expand-splices [& coll]
   (mapcat expand-element coll))
 
+(defn- qualify-keyword [ns k]
+  (if (and (keyword? k) (not (qualified-keyword? k)))
+    (keyword (name ns) (name k))
+    k))
+
+(defn- namespace-map [ns m]
+  (into {} (map (fn [[k v]] [(qualify-keyword ns k) v])) m))
+
 (def ^:private core-transforms
   {:root      identity
    :extern    identity
@@ -107,6 +117,7 @@
    :vector    (comp vec expand-splices)
    :map       (comp #(apply array-map %) expand-splices)
    :baremap   (comp #(apply array-map %) expand-splices)
+   :nsmap     namespace-map
    :set       (comp set expand-splices)
    :splice    ->UnquoteSplice})
 
