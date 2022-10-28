@@ -10,13 +10,14 @@
    "root      = <skip>? (expr | baremap) <skip>?
     baremap   = expr (<skip> expr)+
     <expr>    = list | vector | map | set | atom | symbol | tagged | unquote |
-                splice | nsmap
+                splice | nsmap | meta
     <unquote> = <'~'> extern
     splice    = <'~@'> extern
     extern    = var | resolve
     var       = symbol
     resolve   = <'('> <skip>? symbol (<skip> varexpr)* <skip>? <')'>
     <varexpr> = var | resolve | vector | map | set | atom | tagged | nsmap
+    meta      = <'^'> (keyword | map) <skip>? expr
     nsmap     = <'#'> keyword <skip>? map
     list      = <'('> seq <')'>
     vector    = <'['> seq <']'>
@@ -113,6 +114,7 @@
    :keyword   keyword
    :qkeyword  keyword
    :rawstring transform-raw-string
+   :meta      #(with-meta %2 (if (map? %1) %1 {%1 true}))
    :list      (comp doall expand-splices)
    :vector    (comp vec expand-splices)
    :map       (comp #(apply array-map %) expand-splices)
