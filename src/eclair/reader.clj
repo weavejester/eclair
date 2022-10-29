@@ -5,18 +5,21 @@
             [clojure.walk :as walk]
             [instaparse.core :as insta]))
 
+(declare ^:dynamic *reader-options*)
+
+(declare parse-string)
+
 (def parser
   (insta/parser
    "root      = <skip>? (expr | baremap) <skip>?
     baremap   = expr (<skip> expr)+
     <expr>    = list | vector | map | set | atom | symbol | tagged | unquote |
                 splice | nsmap | meta
-    <unquote> = <'~'> extern
+    unquote   = <'~'> extern
     splice    = <'~@'> extern
     extern    = var | resolve
     var       = symbol
-    resolve   = <'('> <skip>? symbol (<skip> varexpr)* <skip>? <')'>
-    <varexpr> = var | resolve | vector | map | set | atom | tagged | nsmap
+    resolve   = <'('> symbol seq <')'>
     meta      = <'^'> (keyword | map) <skip>? expr
     nsmap     = <'#'> keyword <skip>? map
     list      = <'('> seq <')'>
@@ -110,9 +113,7 @@
    :nil       (constantly nil)
    :char      transform-char
    :symbol    symbol
-   :qsymbol   symbol
    :keyword   keyword
-   :qkeyword  keyword
    :rawstring transform-raw-string
    :meta      #(with-meta %2 (if (map? %1) %1 {%1 true}))
    :list      (comp doall expand-splices)
@@ -121,6 +122,7 @@
    :baremap   (comp #(apply array-map %) expand-splices)
    :nsmap     namespace-map
    :set       (comp set expand-splices)
+   :unquote   identity
    :splice    ->UnquoteSplice})
 
 (def ^:private core-readers
@@ -182,14 +184,12 @@
       (throw (ex-info (str "Unsupported escape character: " c)
                       {:escape-char c}))))
 
-(defn- parse-unquote [transforms s]
-  (str (insta/transform @transforms (parser s :start :extern))))
-
-(defn- make-string-transform [transforms]
+(defn- make-string-transform [options]
   #(-> %
        (str/replace #"\\[trn\\\"]" parse-escaped-char)
        (str/replace #"\\u\d{4}" parse-codepoint)
-       (str/replace #"~\{(.*?)\}" (fn [[_ s]] (parse-unquote transforms s)))))
+       (str/replace #"~\{(.*?)\}"
+                    (fn [[_ s]] (str (parse-string s options :extern))))))
 
 (defn- make-resolver-transform [resolvers]
   (let [resolvers (merge core-resolvers resolvers)]
@@ -198,21 +198,42 @@
         (apply resolver args)
         (throw (ex-info (str "No such resolver: " name) {:resolver name}))))))
 
-(defn- make-transforms [transforms {:keys [readers resolvers vars]}]
+(defn- make-transforms [{:keys [readers resolvers vars] :as options}]
   (assoc core-transforms
          :tagged  (make-tagged-transform readers)
-         :string  (make-string-transform transforms)
+         :string  (make-string-transform options)
          :var     #(get vars %)
          :resolve (make-resolver-transform resolvers)))
 
-(declare ^:dynamic *reader-options*)
+(declare make-resolve-element)
+
+(defn- unquote-in-resolve [tree]
+  (if (vector? tree)
+    (case (first tree)
+      :symbol [:var tree]
+      :list   (make-resolve-element tree)
+      `[~(first tree) ~@(map unquote-in-resolve (rest tree))])
+    tree))
+
+(defn- make-resolve-element [[_ sym & body]]
+  `[:resolve ~sym ~@(map unquote-in-resolve body)])
+
+(defn- unquote-nested-externs [tree]
+  (if (vector? tree)
+    (case (first tree)
+      :resolve (make-resolve-element tree)
+      `[~(first tree) ~@(map unquote-nested-externs (rest tree))])
+    tree))
+
+(defn- parse-string [s options start]
+  (binding [*reader-options* options]
+    (->> (parser s :start start)
+         (unquote-nested-externs)
+         (insta/transform (make-transforms options))
+         (resolve-refs))))
 
 (defn read-string
   ([s]
    (read-string s {}))
   ([s options]
-   (let [transforms (promise)]
-     (deliver transforms (make-transforms transforms options))
-     (binding [*reader-options* options]
-       (-> (insta/transform @transforms (parser s))
-           (resolve-refs))))))
+   (parse-string s options :root)))

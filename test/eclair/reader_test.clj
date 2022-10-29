@@ -22,6 +22,7 @@
   (is (= "1/2" (read-string "\"~{x}/~{y}\"" {:vars {'x 1, 'y 2}})))
   (is (= 1 (read-string "~(or x 1)")))
   (is (= 2 (read-string "~(or x 1)" {:vars {'x 2}})))
+  (is (= 3 (read-string "~(or (or x 2) 1)" {:vars {'x 3}})))
   (is (= {:x 1} (read-string ":x 1")))
   (is (= "x" (read-string "\"\"\"x\"\"\"")))
   (is (= "\\d" (read-string "#\"\\d\"")))
