@@ -30,7 +30,10 @@
   (is (= "\\d" (read-string "#\"\\d\"")))
   (is (= {:foo/x 1} (read-string "#:foo {:x 1}")))
   (is (= true (:x (meta (read-string "^:x {}")))))
-  (is (= 1 (:x (meta (read-string "^{:x 1} {}"))))))
+  (is (= 1 (:x (meta (read-string "^{:x 1} {}")))))
+  (is (= 'x (read-string "~(or x `x)")))
+  (is (= '{:x x} (read-string "~(or x `{:x x})")))
+  (is (= 'x (read-string "`x"))))
 
 (deftest test-load-ecl-file
   (let [port 8080

@@ -1,25 +1,30 @@
 (ns eclair.reader
+  "Contains the reader for Eclair formatted strings."
   (:refer-clojure :exclude [read-string])
   (:require [clojure.instant :as instant]
             [clojure.string :as str]
             [clojure.walk :as walk]
             [instaparse.core :as insta]))
 
-(declare ^:dynamic *reader-options*)
+(def ^:dynamic *reader-options*
+  "Contains the options that read-string was called with. Accessible by custom
+  readers and resolvers."
+  nil)
 
-(declare parse-string)
+(declare ^:private parse-string)
 
-(def parser
+(def ^:private parser
   (insta/parser
    "root      = <skip>? (expr | baremap) <skip>?
     baremap   = expr (<skip> expr)+
     <expr>    = list | vector | map | set | atom | symbol | tagged | unquote |
-                splice | nsmap | meta
+                splice | nsmap | meta | quote
     unquote   = <'~'> extern
     splice    = <'~@'> extern
     extern    = var | resolve
     var       = symbol
     resolve   = <'('> symbol seq <')'>
+    quote     = <'`'> expr
     meta      = <'^'> (keyword | map) <skip>? expr
     nsmap     = <'#'> keyword <skip>? map
     list      = <'('> seq <')'>
@@ -212,23 +217,25 @@
          :var     #(get-var vars %)
          :resolve (make-resolver-transform resolvers)))
 
-(declare make-resolve-element)
+(declare unquote-in-resolve unquote-nested-externs)
+
+(defn- make-resolve-element [[_ sym & body]]
+  `[:resolve ~sym ~@(map unquote-in-resolve body)])
 
 (defn- unquote-in-resolve [tree]
   (if (vector? tree)
     (case (first tree)
       :symbol [:var tree]
       :list   (make-resolve-element tree)
+      :quote  (unquote-nested-externs (second tree))
       `[~(first tree) ~@(map unquote-in-resolve (rest tree))])
     tree))
-
-(defn- make-resolve-element [[_ sym & body]]
-  `[:resolve ~sym ~@(map unquote-in-resolve body)])
 
 (defn- unquote-nested-externs [tree]
   (if (vector? tree)
     (case (first tree)
       :resolve (make-resolve-element tree)
+      :quote   (unquote-nested-externs (second tree))
       `[~(first tree) ~@(map unquote-nested-externs (rest tree))])
     tree))
 
@@ -240,6 +247,13 @@
          (resolve-refs))))
 
 (defn read-string
+  "Reads an Eclair formatted string and return the resulting data structure.
+  By default this is a pure function with no side effects.
+
+  Accepts the following options:
+    :vars      - a map of variables
+    :resolvers - a map of resolver functions
+    :readers   - a map of reader functions"
   ([s]
    (read-string s {}))
   ([s options]
