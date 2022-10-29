@@ -18,6 +18,8 @@
 
 (deftest test-ecl-syntax
   (is (= 1 (read-string "~x" {:vars {'x 1}})))
+  (is (= 1 (read-string "~x" {:vars {:x 1}})))
+  (is (= 1 (read-string "~x" {:vars {"x" 1}})))
   (is (= {:x 1} (read-string "{~@x}" {:vars {'x [:x 1]}})))
   (is (= "1/2" (read-string "\"~{x}/~{y}\"" {:vars {'x 1, 'y 2}})))
   (is (= 1 (read-string "~(or x 1)")))

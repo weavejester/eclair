@@ -198,11 +198,18 @@
         (apply resolver args)
         (throw (ex-info (str "No such resolver: " name) {:resolver name}))))))
 
+(defn- get-var [vars k]
+  (some-> (or (find vars k)
+              (find vars (symbol k))
+              (find vars (keyword k))
+              (find vars (name k)))
+          val))
+
 (defn- make-transforms [{:keys [readers resolvers vars] :as options}]
   (assoc core-transforms
          :tagged  (make-tagged-transform readers)
          :string  (make-string-transform options)
-         :var     #(get vars %)
+         :var     #(get-var vars %)
          :resolve (make-resolver-transform resolvers)))
 
 (declare make-resolve-element)
