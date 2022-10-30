@@ -1,5 +1,7 @@
 # Eclair
 
+[![Build Status](https://app.travis-ci.com/weavejester/eclair.svg?branch=master)](https://app.travis-ci.com/weavejester/eclair)
+
 Eclair is an **e**xtensible **c**onfiguration **l**anguage for Clojure.
 It's a superset of [edn][] and fulfils a similar role to [Aero][], but
 is not limited to using data readers to provide extra functionality.
