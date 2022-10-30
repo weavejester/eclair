@@ -4,6 +4,8 @@ Eclair is an **e**xtensible **c**onfiguration **l**anguage for Clojure.
 It's a superset of [edn][] and fulfils a similar role to [Aero][], but
 is not limited to using data readers to provide extra functionality.
 
+**Note:** This is a new library, and there are likely bugs.
+
 [edn]: https://github.com/edn-format/edn
 [aero]: https://github.com/juxt/aero
 
