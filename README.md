@@ -97,7 +97,7 @@ Variables are supplied with the `:vars` option to either `read-string`
 or `load`:
 
 ```clojure
-(eio/load "example1.ecl" {:vars {'port 8080}})a
+(eio/load "example1.ecl" {:vars {'port 8080}})
 ```
 
 This resolves to the following data structure:
@@ -140,7 +140,7 @@ A resolver is loosely equivalent to a Clojure function. They allow basic
 control structures to be embedded in the configuration.
 
 Like variables, they use the unquote (`~`) and unquote splice operators
-('~@'):
+(`~@`):
 
 ```
 ;; example3.ecl
@@ -246,6 +246,18 @@ regular expression would be written:
 ```
 {:pattern #re #"\d+"}
 ```
+
+### Readers
+
+Eclair includes several extra default readers over edn:
+
+* `#bool`    - coerce to a boolean
+* `#float`   - coerce to a floating point (internally, a double)
+* `#inc`     - coerce to an integer (internally, a long)
+* `#keyword` - coerce to a keyword
+* `#re`      - coerce to a regular expression
+* `#str`     - coerce to a string
+* `#symbol`  - coerce to a symbol
 
 ### Miscellaneous
 
